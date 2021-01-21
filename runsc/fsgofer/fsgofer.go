@@ -49,13 +49,6 @@ const (
 	allowedOpenFlags = unix.O_TRUNC
 )
 
-var (
-	// Remember the process uid/gid to skip chown calls when file owner/group
-	// doesn't need to be changed.
-	processUID = p9.UID(os.Getuid())
-	processGID = p9.GID(os.Getgid())
-)
-
 // join is equivalent to path.Join() but skips path.Clean() which is expensive.
 func join(parent, child string) string {
 	if child == "." || child == ".." {
@@ -457,14 +450,17 @@ func (l *localFile) Create(name string, p9Flags p9.OpenFlags, perm p9.FileMode, 
 	})
 	defer cu.Clean()
 
-	if uid != processUID || gid != processGID {
-		if err := fchown(child.FD(), uid, gid); err != nil {
-			return nil, nil, p9.QID{}, 0, extractErrno(err)
-		}
-	}
 	stat, err := fstat(child.FD())
 	if err != nil {
 		return nil, nil, p9.QID{}, 0, extractErrno(err)
+	}
+
+	if uint32(uid) != stat.Uid || uint32(gid) != stat.Gid {
+		if err := fchown(child.FD(), uid, gid); err != nil {
+			return nil, nil, p9.QID{}, 0, extractErrno(err)
+		}
+		stat.Uid = uint32(uid)
+		stat.Gid = uint32(gid)
 	}
 
 	c := &localFile{
@@ -505,14 +501,17 @@ func (l *localFile) Mkdir(name string, perm p9.FileMode, uid p9.UID, gid p9.GID)
 	}
 	defer f.Close()
 
-	if uid != processUID || gid != processGID {
-		if err := fchown(f.FD(), uid, gid); err != nil {
-			return p9.QID{}, extractErrno(err)
-		}
-	}
 	stat, err := fstat(f.FD())
 	if err != nil {
 		return p9.QID{}, extractErrno(err)
+	}
+
+	if uint32(uid) != stat.Uid || uint32(gid) != stat.Gid {
+		if err := fchown(f.FD(), uid, gid); err != nil {
+			return p9.QID{}, extractErrno(err)
+		}
+		stat.Uid = uint32(uid)
+		stat.Gid = uint32(gid)
 	}
 
 	cu.Release()
@@ -900,14 +899,17 @@ func (l *localFile) Symlink(target, newName string, uid p9.UID, gid p9.GID) (p9.
 	}
 	defer f.Close()
 
-	if uid != processUID || gid != processGID {
-		if err := fchown(f.FD(), uid, gid); err != nil {
-			return p9.QID{}, extractErrno(err)
-		}
-	}
 	stat, err := fstat(f.FD())
 	if err != nil {
 		return p9.QID{}, extractErrno(err)
+	}
+
+	if uint32(uid) != stat.Uid || uint32(gid) != stat.Gid {
+		if err := fchown(f.FD(), uid, gid); err != nil {
+			return p9.QID{}, extractErrno(err)
+		}
+		stat.Uid = uint32(uid)
+		stat.Gid = uint32(gid)
 	}
 
 	cu.Release()
@@ -959,14 +961,17 @@ func (l *localFile) Mknod(name string, mode p9.FileMode, _ uint32, _ uint32, uid
 	}
 	defer child.Close()
 
-	if uid != processUID || gid != processGID {
-		if err := fchown(child.FD(), uid, gid); err != nil {
-			return p9.QID{}, extractErrno(err)
-		}
-	}
 	stat, err := fstat(child.FD())
 	if err != nil {
 		return p9.QID{}, extractErrno(err)
+	}
+
+	if uint32(uid) != stat.Uid || uint32(gid) != stat.Gid {
+		if err := fchown(child.FD(), uid, gid); err != nil {
+			return p9.QID{}, extractErrno(err)
+		}
+		stat.Uid = uint32(uid)
+		stat.Gid = uint32(gid)
 	}
 
 	cu.Release()
